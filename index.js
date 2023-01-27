@@ -1,15 +1,15 @@
 const inquirer = require("inquirer");
 const mysql = require("mysql2");
 const cTable = require("console.table");
-
+require("dotenv").config();
 const db = mysql.createConnection(
   {
     host: "localhost",
     // MySQL username,
     user: "root",
     // MySQL password
-    password: "admin",
-    database: "tracker",
+    password: process.env.PW,
+    database: process.env.DB,
   },
 
   console.log(`Connected to the tracker database.`)
@@ -18,19 +18,51 @@ const db = mysql.createConnection(
 function viewDepartments() {
   db.query("SELECT * FROM department", function (err, results) {
     console.table(results);
+    anotherOne();
   });
 }
 
 function viewRoles() {
   db.query("SELECT * FROM role", function (err, results) {
     console.table(results);
+    anotherOne();
   });
 }
 
 function viewEmployees() {
   db.query("SELECT * FROM employee", function (err, results) {
     console.table(results);
+    anotherOne();
   });
+}
+
+function anotherOne() {
+  inquirer
+    .prompt([
+      {
+        type: "list",
+        message: "What do you want to do?",
+        name: "choice",
+        choices: [
+          {
+            name: "main menu",
+            value: "main menu",
+          },
+          {
+            name: "exit",
+            value: "exit",
+          },
+        ],
+      },
+    ])
+    .then((response) => {
+      if (response.choice === "main menu") {
+        init();
+      }
+      if (response.choice === "exit") {
+        process.exit();
+      }
+    });
 }
 
 function addDepartment() {
@@ -46,6 +78,7 @@ function addDepartment() {
       db.query("INSERT INTO department SET ?", response, function (err, results) {
         console.log("Department added.");
         console.log(err);
+        anotherOne();
       });
     });
 }
@@ -74,6 +107,7 @@ function addRole() {
         db.query("INSERT INTO role SET ?", answer, function (err, results) {
           console.table(results);
           console.log("Role successfully added");
+          anotherOne();
         });
       });
   });
@@ -111,6 +145,39 @@ function addEmployee() {
           db.query("INSERT INTO employee SET ?", answer, function (err, results) {
             console.table(results);
             console.log("Employee successfully added");
+            anotherOne();
+          });
+        });
+    });
+  });
+}
+
+function updateEmployeeRole() {
+  db.query("SELECT * FROM employee", function (err, results) {
+    const employees = results.map((employee) => ({ name: employee.first_name + " " + employee.last_name, value: employee.id }));
+    db.query("SELECT * FROM role", function (err, results) {
+      const roles = results.map((role) => ({ name: role.title, value: role.id }));
+      inquirer
+        .prompt([
+          {
+            type: "list",
+            message: "Which employee do you want to update?",
+            name: "id",
+            choices: employees,
+          },
+
+          {
+            type: "list",
+            message: "What role do you want to assign the employee?",
+            name: "role_id",
+            choices: roles,
+          },
+        ])
+        .then((answer) => {
+          db.query("UPDATE employee SET role_ID = ? WHERE id = ?", [answer.role_id, answer.id], function (err, results) {
+            console.table(results);
+            console.log("Employee role successfully updated");
+            anotherOne();
           });
         });
     });
@@ -131,6 +198,7 @@ function init() {
           { name: "Add a department", value: "ADD_DEPARTMENT" },
           { name: "Add a role", value: "ADD_ROLE" },
           { name: "Add an employee", value: "ADD_EMPLOYEE" },
+          { name: "Update an employee role", value: "UPDATE_EMPLOYEE_ROLE" },
         ],
       },
     ])
@@ -150,6 +218,8 @@ function init() {
         addRole();
       } else if (response.choice === "ADD_EMPLOYEE") {
         addEmployee();
+      } else if (response.choice === "UPDATE_EMPLOYEE_ROLE") {
+        updateEmployeeRole();
       }
     });
 }
